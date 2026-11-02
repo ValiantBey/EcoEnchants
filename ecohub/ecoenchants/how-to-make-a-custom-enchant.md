@@ -56,7 +56,7 @@ targets: # Item groups it can apply to, from targets.yml
   - sword
 conflicts: # Enchantments it can't coexist with (optional)
   - sharpness
-required: # Enchantments that must be present first (optional)
+required: # Enchantments that must be present first (optional), as id[:level] [remove]
   - unbreaking
 rarity: common # Rarity, from rarity.yml
 max-level: 4 # Highest obtainable level
@@ -125,6 +125,26 @@ rarity: common # Rarity from rarity.yml; affects coloring and how likely it roll
 max-level: 4 # Highest level players can reach; effects scale with %level% up to here
 ```
 
+Each `required` entry is written as `id[:level] [remove]`. The level is the minimum level the item needs (1 if left out), and `remove` takes that enchantment off the item when this one is applied, which is useful for enchantments that upgrade or replace another:
+
+```yaml
+required:
+  - ambush # Ambush, any level
+  - unbreaking:3 # Unbreaking III or higher
+  - sharpness:2 remove # Sharpness II or higher, removed from the item when this enchantment is applied
+```
+
+An enchantment marked with `remove` can also be listed under `conflicts`, so it can't be added back afterwards; it won't block applying this enchantment.
+
+A few rules apply wherever the enchantment comes from:
+
+- **Levels from books:** a required enchantment on the same book counts at its level on the book. In an anvil, an enchantment already on the item counts at the level it has before the merge.
+- **Added at once:** a required enchantment can come from the same book or roll. If it's marked `remove`, it's still removed, so the item doesn't end up with both.
+- **Book order:** with drag and drop, the order of enchantments on a book doesn't matter. An anvil goes through the book once, so the required enchantment has to come first.
+- **Books keep everything:** `remove` only applies to items. Enchanted books never lose an enchantment, so merging books can't delete one. It's removed when the book is applied to an item.
+- **Needed by another enchantment:** an enchantment can't be applied if it would remove something another enchantment on the item still requires.
+- **Invalid entries:** an entry that can't be read logs a warning, and the enchantment can't be applied until it's fixed.
+
 ### Obtaining
 
 These three flags control how players can get the enchantment naturally. Set any to `false` to disable that route, which is useful for admin-only or reward enchantments.
@@ -167,6 +187,8 @@ drag-and-drop:
 
 If the item already has this enchantment, applying another book of the same level bumps it by one level (up to `max-level`); a higher-level book always takes the higher level. The price is charged once per application, using the multiplier evaluated against the book's level *before* any bump.
 
+To show players the cost, set `display.book-drag-and-drop-price.enabled` to `true` in `config.yml`. Enchanted books then show the price under each enchantment that allows drag and drop. In `/enchantinfo`, use the `%drag_and_drop_price%` placeholder.
+
 ### Effects
 
 This is the heart of the enchantment, i.e. what it actually does.
@@ -195,6 +217,18 @@ Effects, triggers, conditions, filters, and mutators are a shared system across 
 Use `%level%` as a placeholder anywhere in this section to scale with enchantment level.
 :::
 
+:::tip Single-use enchantments
+To make an enchantment work once and then disappear, add the `remove_this_enchant` effect with the trigger that should use it up. This one keeps the inventory on one death, then removes itself from the item:
+
+```yaml
+effects:
+  - id: keep_inventory
+  - id: remove_this_enchant
+    triggers:
+      - death
+```
+:::
+
 ## Internal placeholders
 
 These placeholders are provided by EcoEnchants and can be used in the description, `placeholder`/`placeholders`, effect args, and conditions:
@@ -217,6 +251,7 @@ These are separate from the placeholders above - they're only available in `ench
 | `%discoverable_raids%` | Whether the enchantment can be found from raids |
 | `%enchantable%` | Whether the enchantment is obtainable from the enchanting table |
 | `%drag_and_drop%` | Whether the enchantment can be applied by dragging an enchanted book onto an item |
+| `%drag_and_drop_price%` | The drag and drop price at the shown level, or the "No" option from `lang.yml` if drag and drop is disabled |
 
 :::tip Troubleshooting
 - **Enchantment doesn't appear after reload?** It's new, so you must re-log, not just reload.
